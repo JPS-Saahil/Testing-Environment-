@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Embed and connection test</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mut:#555;--ok:#0a8f4e;--no:#d12a4a;--wa:#b45309}
+@media (prefers-color-scheme:dark){:root{--bg:#0D0E18;--fg:#f2f2f2;--mut:#a6a8b8;--ok:#2ec4b6;--no:#ff5a7a;--wa:#ffb020}}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:14px/1.5 ui-monospace,Menlo,Consolas,monospace}
+main{max-width:640px;margin:0 auto;display:grid;gap:14px}
+h1{font-size:18px;margin:0 0 2px}
+p{margin:0;color:var(--mut)}
+section{border:2px solid var(--fg);box-shadow:4px 4px 0 var(--fg);padding:12px}
+h2{font-size:13px;margin:0 0 8px}
+.row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--mut)}
+.row:last-child{border:0}
+.pill{display:inline-block;padding:1px 10px;border:1.5px solid;border-radius:999px;font-weight:700;font-size:12px}
+.ok{color:var(--ok)}.no{color:var(--no)}.wa{color:var(--wa)}
+button,a.btn{font:inherit;font-weight:700;font-size:12px;padding:6px 14px;border:2px solid var(--wa);border-radius:999px;background:transparent;color:var(--wa);cursor:pointer;text-decoration:none;display:inline-block}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+iframe{width:100%;height:240px;border:2px solid var(--fg);margin-top:10px;background:var(--bg)}
+</style>
+</head>
+<body>
+<main>
+<div><h1>Embed and connection test</h1><p>Run this in the same app or browser where protected.html failed.</p></div>
+
+<section><h2>1. This viewer</h2><div id="env"></div></section>
+
+<section><h2>2. Connection</h2><div id="net"></div>
+<div class="bar"><button id="again">Test again</button></div></section>
+
+<section><h2>3. Can this viewer embed your site?</h2>
+<div class="row"><span>Result</span><span id="emb" class="pill wa">testing</span></div>
+<p>If the box below shows your site, embedding works. If it says "Web page not available", this viewer blocks embedding: open the files in Chrome or host them instead.</p>
+<iframe id="f1" title="site preview"></iframe></section>
+
+<section><h2>4. Your protected.html</h2>
+<p>Needs protected.html in the same folder as this file.</p>
+<div class="bar"><button id="lp">Load it here</button><a class="btn" href="protected.html" target="_blank" rel="noopener">Open on its own</a></div>
+<iframe id="f2" title="protected preview" hidden></iframe></section>
+</main>
+
+<script>
+(function(){
+var U='https://jps-saahil.github.io/Testing-Environment-/',N=navigator,$=function(i){return document.getElementById(i)};
+function row(k,v,c){return '<div class="row"><span>'+k+'</span><span class="'+(c||'')+'">'+v+'</span></div>'}
+function pill(t,c){return '<span class="pill '+c+'">'+t+'</span>'}
+var framed=false;try{framed=window.top!==window.self}catch(e){framed=true}
+$('env').innerHTML=row('Protocol',location.protocol)+row('Secure context',String(window.isSecureContext))+row('Inside another frame',framed?'yes (preview or app)':'no',framed?'wa':'ok');
+
+function net(){
+ var c=N.connection||N.mozConnection||N.webkitConnection||{},h=row('Browser says online',String(N.onLine),N.onLine?'ok':'no')
+  +row('Connection type',c.effectiveType||'not reported')+row('Downlink',c.downlink?c.downlink+' Mbps':'not reported')+row('Round trip',c.rtt?c.rtt+' ms':'not reported');
+ $('net').innerHTML=h+row('Site reachable','testing...','wa');
+ var t=Date.now(),done=0,ac=window.AbortController?new AbortController():null,m=setTimeout(function(){fin(0)},6000);
+ function fin(ok){if(done)return;done=1;clearTimeout(m);if(!ok&&ac)ac.abort();var ms=Date.now()-t;
+  var good=ok&&ms<4500;
+  $('net').lastChild.outerHTML=row('Site reachable',pill(good?'pass':(ok?'slow':'fail'),good?'ok':'no')+' '+(ok?ms+' ms':'no reply'));
+  var weak=/2g/.test(c.effectiveType||'')||(c.downlink>0&&c.downlink<0.4);
+  $('net').insertAdjacentHTML('beforeend',row('Wrapper would',(!N.onLine||weak||!good)?pill('show the offline box','no'):pill('load your site','ok')))}
+ try{fetch(U+'?_='+t,{method:'HEAD',mode:'no-cors',cache:'no-store',credentials:'omit',signal:ac?ac.signal:undefined}).then(function(){fin(1)},function(){fin(0)})}catch(e){fin(0)}
+}
+
+var blocked=0;
+document.addEventListener('securitypolicyviolation',function(e){var v=e.violatedDirective||'';if(/frame|child|default|object/.test(v)){blocked=1;$('emb').className='pill no';$('emb').textContent='blocked by this viewer ('+v+')'}});
+function embed(){
+ blocked=0;$('emb').className='pill wa';$('emb').textContent='testing';
+ var f=$('f1');f.onload=function(){setTimeout(function(){if(!blocked){$('emb').className='pill wa';$('emb').textContent='loaded: check the box'}},300)};
+ f.src=U+'?_='+Date.now();
+}
+$('lp').onclick=function(){var f=$('f2');f.hidden=false;f.src='protected.html'};
+$('again').onclick=function(){net();embed()};
+net();embed();
+})();
+</script>
+</body>
+</html>
